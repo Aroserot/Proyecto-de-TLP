@@ -1,0 +1,54 @@
+% Archivo de configuracion para el juego de Snake
+% Definido como una base de conocimiento inspirado en Prolog
+
+% ==================================
+% PARAMETROS GENERALES DEL JUEGO
+% ==================================
+juego(nombre, 'Snake Clasico').
+juego(version, '1.0').
+tablero(dimensiones, [20, 20]).
+juego(velocidad_inicial, 1.0).
+
+% ==================================
+% REGLAS DEL JUEGO
+% ==================================
+
+% Regla para el crecimiento de la serpiente
+regla(comer_fruta, evento, 'fruta_comida').
+regla(comer_fruta, accion, 'crecer').
+regla(comer_fruta, puntuacion, 10).
+
+% Regla para la aparicion de frutas
+regla(aparicion_frutas, aleatorio, si).
+regla(aparicion_frutas, cantidad, 1).
+
+% Regla para el aumento de velocidad con los niveles
+regla(niveles_velocidad, aumento, si).
+regla(niveles_velocidad, puntos_por_nivel, 50).
+regla(niveles_velocidad, multiplicador_velocidad, 1.1).
+
+% Regla de finalizacion del juego
+regla(fin_juego, condicion, 'colision_pared_o_cuerpo').
+
+% ==================================
+% CONTROLES DEL JUEGO
+% ==================================
+% control(accion, tecla).
+control('mover_izquierda', 'a').
+control('mover_derecha', 'd').
+control('mover_arriba', 'w').
+control('mover_abajo', 's').
+control('pausar', 'p').
+control('reiniciar', 'r').
+
+% ==================================
+% DEFINICION DE LA SERPIENTE Y FRUTA
+% ==================================
+% La serpiente se representa como una lista de coordenadas
+serpiente(color, 'verde').
+serpiente(longitud_inicial, 3).
+
+fruta(color, 'rojo').
+
+% Lista de elementos del juego
+elementos_disponibles([serpiente, fruta]).
