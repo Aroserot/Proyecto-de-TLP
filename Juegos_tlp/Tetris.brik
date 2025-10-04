@@ -1,3 +1,4 @@
+
 % Archivo de configuracion para el juego de Tetris
 % Definido como una base de conocimiento inspirado en Prolog
 
@@ -13,6 +14,7 @@ juego(velocidad_inicial, 1.0).
 % REGLAS DEL JUEGO
 % ==================================
 
+
 % Regla para el comportamiento de las lineas completadas
 regla(puntuacion_lineas, evento, 'linea_completada').
 regla(puntuacion_lineas, accion, 'eliminar_fila').
@@ -20,20 +22,33 @@ regla(puntuacion_lineas, puntuacion_base, 100).
 % Multiplicador de puntuacion por multiples lineas
 regla(puntuacion_lineas, multiplicadores, [1, 3, 5, 8]).
 
+
 % Regla para la ficha explosiva
 regla(bomba_ladrillo, tipo, 'bomba').
 regla(bomba_ladrillo, color, 'rojo_especial').
 regla(bomba_ladrillo, radio_destruccion, 2).
 regla(bomba_ladrillo, tiempo_explosion, 5).
 
+
+% Regla para la ficha de inversión de controles
+regla(inversion_ladrillo, tipo, 'inversion_controles').
+regla(inversion_ladrillo, color, 'azul_especial').
+regla(inversion_ladrillo, duracion_inversion, 5).
+% segundos
+regla(inversion_ladrillo, descripcion, 'Invierte los controles izquierda/derecha durante 5 segundos al activarse').
+
+
 % Regla para la aparicion de piezas
 regla(aparicion_piezas, aleatorio, si).
 regla(aparicion_piezas, probabilidad_bomba, 0.05).
+regla(aparicion_piezas, probabilidad_inversion, 0.05).
+
 
 % Regla para el aumento de velocidad con los niveles
 regla(niveles_velocidad, aumento, si).
 regla(niveles_velocidad, puntos_por_nivel, 1000).
 regla(niveles_velocidad, multiplicador_velocidad, 1.2).
+
 
 % Regla de finalizacion del juego
 regla(fin_juego, condicion, 'pieza_alcanza_tope').
@@ -41,6 +56,7 @@ regla(fin_juego, condicion, 'pieza_alcanza_tope').
 % ==================================
 % CONTROLES DEL JUEGO
 % ==================================
+
 % control(accion, tecla).
 control('mover_izquierda', 'a').
 control('mover_derecha', 'd').
@@ -52,50 +68,96 @@ control('reiniciar', 'r').
 % ==================================
 % DEFINICION DE LAS PIEZAS
 % ==================================
+
 % Cada pieza es un hecho que define su nombre, color y una lista de rotaciones
 pieza(i, 'cian', [
-    [[0, 0, 0, 0], [1, 1, 1, 1], [0, 0, 0, 0], [0, 0, 0, 0]], % Rotacion 0 y 180 (horizontal)
-    [[0, 1, 0, 0], [0, 1, 0, 0], [0, 1, 0, 0], [0, 1, 0, 0]]  % Rotacion 90 y 270 (vertical)
+    % Rotacion 0 y 180 (horizontal)
+    [[0, 0, 0, 0], [1, 1, 1, 1], [0, 0, 0, 0], [0, 0, 0, 0]],
+    % Rotacion 90 y 270 (vertical)
+    [[0, 1, 0, 0], [0, 1, 0, 0], [0, 1, 0, 0], [0, 1, 0, 0]]
 ]).
 
 pieza(o, 'amarillo', [
-    [[1, 1], [1, 1]] % La pieza O no cambia al rotar
+
+    % La pieza O no cambia al rotar
+    [[1, 1], [1, 1]]
 ]).
 
 pieza(t, 'magenta', [
-    [[0, 1, 0], [1, 1, 1], [0, 0, 0]], % Rotacion 0
-    [[0, 1, 0], [0, 1, 1], [0, 1, 0]], % Rotacion 90
-    [[0, 0, 0], [1, 1, 1], [0, 1, 0]], % Rotacion 180
-    [[0, 1, 0], [1, 1, 0], [0, 1, 0]]  % Rotacion 270
+
+    % Rotacion 0
+    [[0, 1, 0], [1, 1, 1], [0, 0, 0]],
+
+    % Rotacion 90
+    [[0, 1, 0], [0, 1, 1], [0, 1, 0]],
+
+    % Rotacion 180
+    [[0, 0, 0], [1, 1, 1], [0, 1, 0]],
+
+    % Rotacion 270
+    [[0, 1, 0], [1, 1, 0], [0, 1, 0]]
 ]).
 
 pieza(l, 'naranja', [
-    [[0, 0, 1], [1, 1, 1], [0, 0, 0]], % Rotacion 0
-    [[0, 1, 0], [0, 1, 0], [0, 1, 1]], % Rotacion 90
-    [[0, 0, 0], [1, 1, 1], [1, 0, 0]], % Rotacion 180
-    [[1, 1, 0], [0, 1, 0], [0, 1, 0]]  % Rotacion 270
+
+    % Rotacion 0
+    [[0, 0, 1], [1, 1, 1], [0, 0, 0]],
+
+    % Rotacion 90
+    [[0, 1, 0], [0, 1, 0], [0, 1, 1]],
+
+    % Rotacion 180
+    [[0, 0, 0], [1, 1, 1], [1, 0, 0]],
+
+    % Rotacion 270
+    [[1, 1, 0], [0, 1, 0], [0, 1, 0]]
 ]).
 
 pieza(j, 'azul', [
-    [[1, 0, 0], [1, 1, 1], [0, 0, 0]], % Rotacion 0
-    [[0, 1, 1], [0, 1, 0], [0, 1, 0]], % Rotacion 90
-    [[0, 0, 0], [1, 1, 1], [0, 0, 1]], % Rotacion 180
-    [[0, 1, 0], [0, 1, 0], [1, 1, 0]]  % Rotacion 270
+
+    % Rotacion 0
+    [[1, 0, 0], [1, 1, 1], [0, 0, 0]],
+
+    % Rotacion 90
+    [[0, 1, 1], [0, 1, 0], [0, 1, 0]],
+
+    % Rotacion 180
+    [[0, 0, 0], [1, 1, 1], [0, 0, 1]],
+
+    % Rotacion 270
+    [[0, 1, 0], [0, 1, 0], [1, 1, 0]]
 ]).
 
 pieza(s, 'verde', [
-    [[0, 1, 1], [1, 1, 0], [0, 0, 0]], % Rotacion 0 y 180
-    [[0, 1, 0], [0, 1, 1], [0, 0, 1]]  % Rotacion 90 y 270
+
+    % Rotacion 0 y 180
+    [[0, 1, 1], [1, 1, 0], [0, 0, 0]],
+
+    % Rotacion 90 y 270
+    [[0, 1, 0], [0, 1, 1], [0, 0, 1]]
 ]).
 
 pieza(z, 'rojo', [
-    [[1, 1, 0], [0, 1, 1], [0, 0, 0]], % Rotacion 0 y 180
-    [[0, 0, 1], [0, 1, 1], [0, 1, 0]]  % Rotacion 90 y 270
+
+    % Rotacion 0 y 180
+    [[1, 1, 0], [0, 1, 1], [0, 0, 0]],
+
+    % Rotacion 90 y 270
+    [[0, 0, 1], [0, 1, 1], [0, 1, 0]]
 ]).
 
 pieza(bomba, 'rojo_especial', [
-    [[1]] % Una sola pieza, no rota
+
+    % Una sola pieza, no rota
+    [[1]]
 ]).
 
+pieza(inversion, 'azul_especial', [
+
+    % Una sola pieza, no rota
+    [[1]]
+]).
+
+
 % Lista de todas las figuras que el juego puede usar
-figuras_disponibles([i, o, t, l, j, s, z, bomba]).
+figuras_disponibles([i, o, t, l, j, s, z, bomba, inversion]).

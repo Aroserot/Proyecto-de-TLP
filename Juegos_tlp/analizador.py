@@ -1,6 +1,6 @@
 # Analizador para archivos .brik (lenguaje de juegos)
-# Autor: [Tu Nombre]
-# Fecha: 2025-09-26
+# Autor: [Andres Rosero Toledo, Chris Ordoñez Alvarado, Edna Pamplona López]
+# Fecha: 2025-10-04
 # Este analizador realiza el análisis léxico y sintáctico de archivos .brik y genera un árbol sintáctico en arbol.ast
 
 import re
@@ -87,6 +87,11 @@ class Parser:
     def parse(self):
         facts = []
         while self.current() is not None:
+            # Solo ignorar tokens inesperados al inicio de un hecho
+            if self.current().type != 'ID':
+                self.pos += 1
+                continue
+            # Si hay un error dentro de un hecho, reportar y detener
             facts.append(self.fact())
         return ASTNode('Programa', facts)
     def fact(self):
@@ -106,10 +111,13 @@ class Parser:
     def arg(self):
         tok = self.current()
         if tok.type == 'NUMBER':
+            self.eat('NUMBER')
             return ASTNode('Numero', value=tok.value)
         elif tok.type == 'STRING':
+            self.eat('STRING')
             return ASTNode('Cadena', value=tok.value)
         elif tok.type == 'ID':
+            self.eat('ID')
             return ASTNode('ID', value=tok.value)
         elif tok.type == 'LBRACKET':
             return self.list_()
@@ -118,11 +126,12 @@ class Parser:
     def list_(self):
         self.eat('LBRACKET')
         elements = []
-        if self.current().type != 'RBRACKET':
+        while self.current() and self.current().type != 'RBRACKET':
             elements.append(self.arg())
-            while self.current().type == 'COMMA':
+            if self.current() and self.current().type == 'COMMA':
                 self.eat('COMMA')
-                elements.append(self.arg())
+            else:
+                break
         self.eat('RBRACKET')
         return ASTNode('Lista', elements)
 
@@ -137,6 +146,9 @@ def main():
     with open(archivo, 'r', encoding='utf-8') as f:
         code = f.read()
     tokens = lexer(code)
+    print('TOKENS:')
+    for t in tokens:
+        print(t)
     parser = Parser(tokens)
     try:
         ast = parser.parse()
@@ -144,9 +156,10 @@ def main():
         print('Error de sintaxis:', e)
         return
     # Guardar el árbol sintáctico
-    with open('arbol.ast', 'w', encoding='utf-8') as f:
+    output_path = os.path.abspath('arbol.ast')
+    with open(output_path, 'w', encoding='utf-8') as f:
         f.write(str(ast))
-    print('Análisis completado. Árbol sintáctico guardado en arbol.ast')
+    print(f'Análisis completado. Árbol sintáctico guardado en: {output_path}')
 
 if __name__ == '__main__':
     main()
