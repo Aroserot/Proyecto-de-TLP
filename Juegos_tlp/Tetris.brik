@@ -1,6 +1,5 @@
 
 % Archivo de configuracion para el juego de Tetris
-% Definido como una base de conocimiento inspirado en Prolog
 
 % ==================================
 % PARAMETROS GENERALES DEL JUEGO
@@ -28,6 +27,12 @@ regla(bomba_ladrillo, tipo, 'bomba').
 regla(bomba_ladrillo, color, 'rojo_especial').
 regla(bomba_ladrillo, radio_destruccion, 2).
 regla(bomba_ladrillo, tiempo_explosion, 5).
+
+% Regla para ficha congelada
+regla(ficha_congelada, tipo, 'hielo').
+regla(ficha_congelada, color, 'celeste').
+regla(ficha_congelada, duracion_efecto, 5).
+regla(ficha_congelada, multiplicador_velocidad, 0.7).
 
 
 % Regla para la ficha de inversión de controles

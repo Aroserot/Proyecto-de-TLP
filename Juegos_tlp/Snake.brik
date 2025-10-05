@@ -1,6 +1,5 @@
 
 % Archivo de configuracion para el juego de Snake
-% Definido como una base de conocimiento inspirado en Prolog
 
 % ==================================
 % PARAMETROS GENERALES DEL JUEGO
@@ -43,6 +42,13 @@ regla(fruta_dorada, probabilidad, 0.1).
 regla(fruta_dorada, duracion_segundos, 5).
 regla(fruta_dorada, puntuacion, 50).
 regla(fruta_dorada, color, 'dorado').
+
+% Fruta explosiva
+regla(fruta_explosiva, aparicion, 'aleatoria').
+regla(fruta_explosiva, probabilidad, 0.05).
+regla(fruta_explosiva, duracion_segundos, 5).
+regla(fruta_explosiva, efecto, 'reducir_longitud').
+regla(fruta_explosiva, color, 'rojo').
 
 
 % Regla para el power-up que ralentiza el tiempo
