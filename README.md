@@ -1,49 +1,28 @@
-Motor gráfico mínimo para la materia "Teoría de Lenguajes de Programación" (Entrega 2).
+Motor gráfico (Tkinter) para la materia "Teoría de Lenguajes de Programación".
 
 Requisitos:
 
-- Python 2.7
-- pygame (ver `requirements.txt`)
+- Python 2.7 (Tkinter viene incluido en la instalación estándar)
 
-Archivos:
+Estructura relevante:
 
-- `engine.py`: motor gráfico mínimo. Contiene inicialización de ventana, bucle principal, funciones para dibujar rectángulos y texto y manejo de entradas.
-- `example_game.py`: ejemplo que mueve un ladrillo con las teclas de flecha.
+- `Entrega1_Proyecto_Practico/analizador.py`: parser de archivos `.brik` y generación de AST/símbolos.
+- `Entrega1_Proyecto_Practico/motor.py`: motor y juegos (Snake, Tetris) renderizados con Tkinter.
+- `Entrega1_Proyecto_Practico/Snake.brik` y `Entrega1_Proyecto_Practico/Tetris.brik`: definición de reglas/elementos.
 
-Cómo ejecutar:
-
-1. Crear un virtualenv con Python 2.7 (ejemplo usando virtualenv):
+Cómo ejecutar (Windows PowerShell):
 
 ```powershell
-virtualenv -p C:\\ruta\\a\\python2.7 venv; .\\venv\\Scripts\\activate
-pip install -r requirements.txt
-python example_game.py
+# Desde la raíz del repo
+python .\Entrega1_Proyecto_Practico\motor.py
 ```
+
+Controles:
+
+- Menú: flechas o `W/S` para moverse, `Enter` para seleccionar.
+- Snake: flechas para mover; `P` pausa; `R` reinicia; `Esc` menú.
+- Tetris: `A/D` mover; `S` caída rápida; `W` mantener; `E` rotar; `P` pausa; `R` reinicia; `Esc` menú.
 
 Notas:
 
-- He creado código compatible con Python 2.7; revisa y adapta la documentación que entregues según necesites.
-
-Detalles rápidos del motor:
-
-- Ventana de 640x480 por defecto.
-- Bucle principal con control de FPS (60 por defecto).
-- Funciones para dibujar rectángulos y texto, y registrar handlers de teclado.
-
-"Contrato" básico:
-
-- Input: eventos de teclado y función de actualización opcional.
-- Output: render en ventana y terminación limpia al cerrar la ventana.
-
-Próximos pasos recomendados:
-
-- Añadir documentación técnica y ejemplos adicionales (p.ej. Tetris.brik y Snake.brik) que conformen los juegos a probar.
-
-Nota sobre desarrollo sin pygame real:
-
-He incluido un pequeño "stub" local en la carpeta `pygame/` para resolver importaciones y poder editar/analizar el código sin tener instalado pygame. Este stub NO implementa rendering ni eventos reales. Para ejecutar el juego en tu máquina instala la versión real de pygame y elimina o ignora la carpeta `pygame/` del proyecto.
-
-Para usar pygame real:
-
-1. Elimina la carpeta `pygame/` del repositorio (o renómbrala) para que la importación resuelva al paquete instalado en el entorno.
-2. Instala pygame en tu virtualenv: `pip install -r requirements.txt`.
+- El proyecto ya no usa `pygame`; el motor ha sido migrado totalmente a Tkinter para cumplir con el objetivo de compatibilidad con Python 2.7.

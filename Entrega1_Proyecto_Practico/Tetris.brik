@@ -1,4 +1,3 @@
-
 % Archivo de configuracion para el juego de Tetris
 
 % ==================================
@@ -37,7 +36,7 @@ regla(ficha_congelada, multiplicador_velocidad, 0.7).
 
 % Regla para la ficha de inversión de controles
 regla(inversion_ladrillo, tipo, 'inversion_controles').
-regla(inversion_ladrillo, color, 'azul_especial').
+regla(inversion_ladrillo, color, 'verde').
 regla(inversion_ladrillo, duracion_inversion, 5).
 % segundos
 regla(inversion_ladrillo, descripcion, 'Invierte los controles izquierda/derecha durante 5 segundos al activarse').
@@ -45,8 +44,9 @@ regla(inversion_ladrillo, descripcion, 'Invierte los controles izquierda/derecha
 
 % Regla para la aparicion de piezas
 regla(aparicion_piezas, aleatorio, si).
-regla(aparicion_piezas, probabilidad_bomba, 0.05).
-regla(aparicion_piezas, probabilidad_inversion, 0.05).
+regla(aparicion_piezas, probabilidad_bomba, 0.10).
+regla(aparicion_piezas, probabilidad_inversion, 0.10).
+regla(aparicion_piezas, probabilidad_congelada, 0.10).  % NUEVO
 
 
 % Regla para el aumento de velocidad con los niveles
@@ -69,27 +69,26 @@ control('acelerar_abajo', 's').
 control('evitar_caida', 'w').
 control('pausar', 'p').
 control('reiniciar', 'r').
+control('rotar', 'e').  % NUEVO
 
 % ==================================
 % DEFINICION DE LAS PIEZAS
 % ==================================
 
 % Cada pieza es un hecho que define su nombre, color y una lista de rotaciones
-pieza(i, 'cian', [
+pieza(i, [
     % Rotacion 0 y 180 (horizontal)
     [[0, 0, 0, 0], [1, 1, 1, 1], [0, 0, 0, 0], [0, 0, 0, 0]],
     % Rotacion 90 y 270 (vertical)
     [[0, 1, 0, 0], [0, 1, 0, 0], [0, 1, 0, 0], [0, 1, 0, 0]]
 ]).
 
-pieza(o, 'amarillo', [
-
+pieza(o, [
     % La pieza O no cambia al rotar
     [[1, 1], [1, 1]]
 ]).
 
-pieza(t, 'magenta', [
-
+pieza(t, [
     % Rotacion 0
     [[0, 1, 0], [1, 1, 1], [0, 0, 0]],
 
@@ -103,8 +102,7 @@ pieza(t, 'magenta', [
     [[0, 1, 0], [1, 1, 0], [0, 1, 0]]
 ]).
 
-pieza(l, 'naranja', [
-
+pieza(l, [
     % Rotacion 0
     [[0, 0, 1], [1, 1, 1], [0, 0, 0]],
 
@@ -118,8 +116,7 @@ pieza(l, 'naranja', [
     [[1, 1, 0], [0, 1, 0], [0, 1, 0]]
 ]).
 
-pieza(j, 'azul', [
-
+pieza(j, [
     % Rotacion 0
     [[1, 0, 0], [1, 1, 1], [0, 0, 0]],
 
@@ -133,8 +130,7 @@ pieza(j, 'azul', [
     [[0, 1, 0], [0, 1, 0], [1, 1, 0]]
 ]).
 
-pieza(s, 'verde', [
-
+pieza(s, [
     % Rotacion 0 y 180
     [[0, 1, 1], [1, 1, 0], [0, 0, 0]],
 
@@ -142,8 +138,7 @@ pieza(s, 'verde', [
     [[0, 1, 0], [0, 1, 1], [0, 0, 1]]
 ]).
 
-pieza(z, 'rojo', [
-
+pieza(z, [
     % Rotacion 0 y 180
     [[1, 1, 0], [0, 1, 1], [0, 0, 0]],
 
@@ -152,17 +147,20 @@ pieza(z, 'rojo', [
 ]).
 
 pieza(bomba, 'rojo_especial', [
-
     % Una sola pieza, no rota
     [[1]]
 ]).
 
-pieza(inversion, 'azul_especial', [
+pieza(inversion, 'amarillo', [
+    % Una sola pieza, no rota
+    [[1]]
+]).
 
+pieza(congelada, 'celeste', [
     % Una sola pieza, no rota
     [[1]]
 ]).
 
 
 % Lista de todas las figuras que el juego puede usar
-figuras_disponibles([i, o, t, l, j, s, z, bomba, inversion]).
+figuras_disponibles([i, o, t, l, j, s, z, bomba, inversion, congelada]).
