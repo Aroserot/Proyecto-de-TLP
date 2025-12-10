@@ -36,42 +36,49 @@ regla(niveles_velocidad, multiplicador_velocidad, 1.1).
 
 % Regla para la fruta dorada que aparece por tiempo limitado
 regla(fruta_dorada, aparicion, 'temporizada').
-regla(fruta_dorada, probabilidad, 0.2).
-% 20% de probabilidad de que la fruta sea dorada
+regla(fruta_dorada, probabilidad, 0.15).
+% Probabilidad ajustada de aparición de fruta dorada
 regla(fruta_dorada, duracion_segundos, 5).
 regla(fruta_dorada, puntuacion, 50).
 regla(fruta_dorada, color, 'dorado').
+regla(fruta_dorada, forma, 'manzana').
 
 % Fruta explosiva
 regla(fruta_explosiva, aparicion, 'aleatoria').
-regla(fruta_explosiva, probabilidad, 0.12).
+regla(fruta_explosiva, probabilidad, 0.10).
 regla(fruta_explosiva, duracion_segundos, 5).
 regla(fruta_explosiva, efecto, 'reducir_longitud').
-regla(fruta_explosiva, color, 'naranja').
+regla(fruta_explosiva, color, 'rojo').
+regla(fruta_explosiva, forma, 'bomba').
 
 
 % Regla para el power-up que ralentiza el tiempo
 regla(powerup_ralentizar, aparicion, 'aleatoria').
-regla(powerup_ralentizar, probabilidad, 0.1).
-% 10% de probabilidad de aparecer en lugar de una fruta
+regla(powerup_ralentizar, probabilidad, 0.08).
+% Probabilidad ajustada para ralentizar
 regla(powerup_ralentizar, accion, 'modificar_velocidad').
 regla(powerup_ralentizar, multiplicador, 0.5).
 % Reduce la velocidad a la mitad
 regla(powerup_ralentizar, duracion_efecto, 8).
 % El efecto dura 8 segundos
 regla(powerup_ralentizar, color, 'azul_cielo').
+regla(powerup_ralentizar, forma, 'reloj').
 
 
 % NUEVO: Fruta morada (boost de velocidad)
 regla(fruta_morada, aparicion, 'aleatoria').
-regla(fruta_morada, probabilidad, 0.15).
+regla(fruta_morada, probabilidad, 0.12).
 regla(fruta_morada, duracion_efecto, 6).
 regla(fruta_morada, multiplicador, 1.5).
 regla(fruta_morada, color, 'morado').
+regla(fruta_morada, forma, 'tenis').
 
 
 % Regla de finalizacion del juego
 regla(fin_juego, condicion, 'colision_pared_o_cuerpo').
+% Condición de victoria: alcanzar nivel objetivo
+regla(victoria, condicion, 'nivel_objetivo').
+regla(victoria, nivel_objetivo, 30).
 
 % ==================================
 % CONTROLES DEL JUEGO

@@ -1,6 +1,6 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-# engine.py (Tkinter, compatible con Python 2.7)
+# Autor: [Andres Rosero Toledo, Chris Ordoñez Alvarado, Edna Pamplona López]
+# Fecha: 2024-12-05
+# Descripción: Motor básico para juegos con Tkinter, incluyendo carga de archivos .brik
 import sys
 import os
 import io
@@ -42,6 +42,7 @@ WINDOW_TITLE = "Motor Tkinter - Entrega 2"
 FPS = 60
 BG_COLOR = (30, 30, 30)
 TEXT_COLOR = (230, 230, 230)
+PANEL_WIDTH = 220
 
 # ---------- Módulo de Entrada ----------
 class InputManager:
@@ -94,11 +95,11 @@ class Renderer:
     def draw_block(self, x, y, w=40, h=20, color=(200,80,80)):
         self.canvas.create_rectangle(x, y, x+w, y+h, fill=_rgb(color), outline=_rgb((0,0,0)))
 
-    def draw_text(self, text, x, y, color=TEXT_COLOR):
-        self.canvas.create_text(x, y, text=text, anchor='nw', fill=_rgb(color), font=('Arial', 14))
+    def draw_text(self, text, x, y, color=TEXT_COLOR, size=12):
+        self.canvas.create_text(x, y, text=text, anchor='nw', fill=_rgb(color), font=('Arial', size))
 
-    def draw_text_center(self, text, y, color=TEXT_COLOR):
-        self.canvas.create_text(WINDOW_SIZE[0]//2, y, text=text, anchor='n', fill=_rgb(color), font=('Arial', 16))
+    def draw_text_center(self, text, y, color=TEXT_COLOR, size=14):
+        self.canvas.create_text(WINDOW_SIZE[0]//2, y, text=text, anchor='n', fill=_rgb(color), font=('Arial', size))
 
     def draw_score(self, score, x=8, y=8):
         self.draw_text("Puntuación: {0}".format(score), x, y)
@@ -114,10 +115,31 @@ class Renderer:
     def draw_playfield(self, x0, y0, cols, rows, cell, bg=(20,20,20), border=(200,200,200)):
         self.canvas.create_rectangle(x0, y0, x0+cols*cell, y0+rows*cell, fill=_rgb(bg), outline=_rgb(border))
 
+    # Nuevas utilidades para formas de frutas
+    def draw_circle(self, x, y, w, h, color, outline=(0,0,0)):
+        self.canvas.create_oval(x, y, x+w, y+h, fill=_rgb(color), outline=_rgb(outline))
+
+    def draw_polygon(self, points, color, outline=(0,0,0)):
+        # points: lista de (x,y)
+        flat = []
+        for (px, py) in points:
+            flat.extend([px, py])
+        self.canvas.create_polygon(*flat, fill=_rgb(color), outline=_rgb(outline))
+
 def _rgb(rgb_tuple):
     return '#%02x%02x%02x' % rgb_tuple
 
 def color_from_name(name):
+    # Normalizar nombre para que funcione en Py2 (unicode) y Py3
+    try:
+        # En Py2: si es unicode, convertir a str (bytes) para coincidir con claves del dict
+        import sys
+        if sys.version_info[0] == 2 and isinstance(name, unicode):
+            name = name.encode('utf-8')
+    except Exception:
+        pass
+    if isinstance(name, str):
+        name = name.lower()
     cmap = {
         'cian': (0, 255, 255),
         'amarillo': (255, 255, 0),
@@ -214,15 +236,28 @@ def list_brik_files():
 def get_rule_values(data, nombre_regla, clave):
     return [r[2] for r in data.get('regla', []) if len(r) >= 3 and r[0] == nombre_regla and r[1] == clave]
 
-def get_rule_value(data, nombre_regla, clave, default=None, cast=float):
+def get_rule_value(data, nombre_regla, clave, default=None, cast=None):
     vals = get_rule_values(data, nombre_regla, clave)
     if not vals:
         return default
     v = vals[0]
+    # Si se provee un convertidor callable, aplicarlo; si no, devolver el valor tal cual
     try:
+        if cast is None:
+            return v
         return cast(v)
     except:
         return v
+
+def get_rule_str(data, nombre_regla, clave, default=None):
+    vals = get_rule_values(data, nombre_regla, clave)
+    if not vals:
+        return default
+    v = vals[0]
+    # Normalizar comillas de cadenas si vienen con quotes
+    if isinstance(v, (str, unicode)) and len(v) >= 2 and v[0] == '\'' and v[-1] == '\'':
+        return v[1:-1]
+    return v
 
 def get_fact_value(data, predicado, clave, default=None):
     for rec in data.get(predicado, []):
@@ -285,10 +320,13 @@ class SnakeGame(BaseGame):
     def __init__(self, data):
         BaseGame.__init__(self, data)
         self.grid_w, self.grid_h = get_dimensions(data)
-        self.cell = max(12, 20)
+        # Ajustar el área de juego para dejar un panel a la derecha
+        available_w = max(100, WINDOW_SIZE[0] - PANEL_WIDTH - 20)
+        self.cell = max(12, min(20, available_w // max(self.grid_w, 1)))
         self.speed = get_numeric_fact(data, 'juego', 'velocidad_inicial', 4.0, float)
         self.timer_move = 0.0
         self.time_total = 0.0
+        self.lives = get_rule_value(data, 'juego', 'vidas', 3, int) or 3
         longitud = int(get_fact_value(data, 'serpiente', 'longitud_inicial', 3))
         start_x, start_y = self.grid_w // 2, self.grid_h // 2
         self.snake = [(start_x - i, start_y) for i in range(longitud)]
@@ -315,7 +353,9 @@ class SnakeGame(BaseGame):
         }
         self.key_pause = self.get_key_for_action('pausar') or 'p'
         self.key_restart = self.get_key_for_action('reiniciar') or 'r'
-        self.offset_x = (WINDOW_SIZE[0] - self.grid_w * self.cell) // 2
+        # Centrar dentro del área disponible (excluye panel)
+        play_w = WINDOW_SIZE[0] - PANEL_WIDTH
+        self.offset_x = max(10, (play_w - self.grid_w * self.cell) // 2)
         self.offset_y = (WINDOW_SIZE[1] - self.grid_h * self.cell) // 2
         self.explosiva_dur = get_rule_value(data, 'fruta_explosiva', 'duracion_segundos', 5, int)
         self.fruit_spawn_time = 0.0
@@ -368,19 +408,45 @@ class SnakeGame(BaseGame):
             self.dir = self.next_dir
             head = (self.snake[0][0] + self.dir[0], self.snake[0][1] + self.dir[1])
             if (head[0] < 0 or head[0] >= self.grid_w or head[1] < 0 or head[1] >= self.grid_h or head in self.snake):
-                self.game_over = True
-                return
+                # Perder una vida y reiniciar posición si quedan vidas
+                if self.lives > 1:
+                    self.lives -= 1
+                    start_x, start_y = self.grid_w // 2, self.grid_h // 2
+                    longitud = max(3, len(self.snake))
+                    self.snake = [(start_x - i, start_y) for i in range(min(longitud, 5))]
+                    self.dir = (1, 0)
+                    self.next_dir = self.dir
+                    return
+                else:
+                    self.game_over = True
+                    return
             self.snake.insert(0, head)
             if head == self.fruit:
                 self.score += self.score_add
                 if self.score // self.points_per_level + 1 > self.level:
                     self.level = self.score // self.points_per_level + 1
                     self.speed *= self.speed_mult_level
+                # Condición de victoria por nivel objetivo
+                vict_cond = next((r[2] for r in self.data.get('regla', []) if r[0]=='victoria' and r[1]=='condicion'), None)
+                vict_nivel = get_rule_value(self.data, 'victoria', 'nivel_objetivo', None, int)
+                if vict_cond == 'nivel_objetivo' and isinstance(vict_nivel, int):
+                    if self.level >= vict_nivel:
+                        self.game_over = True
                 if self.fruit_type == 'dorada':
                     self.score += self.score_add * 2
                     self.fruit = self.spawn_fruit()
                 elif self.fruit_type == 'explosiva':
-                    self.game_over = True
+                    # Quitar solo una vida; si quedan, reiniciar serpiente
+                    if self.lives > 1:
+                        self.lives -= 1
+                        start_x, start_y = self.grid_w // 2, self.grid_h // 2
+                        base_len = max(3, len(self.snake))
+                        self.snake = [(start_x - i, start_y) for i in range(min(base_len, 5))]
+                        self.dir = (1, 0)
+                        self.next_dir = self.dir
+                        self.fruit = self.spawn_fruit()
+                    else:
+                        self.game_over = True
                 elif self.fruit_type == 'ralentizar':
                     self.speed_effect_end = self.time_total + self.ralentizar_dur
                     self.last_speed_mult = self.ralentizar_mult
@@ -408,27 +474,146 @@ class SnakeGame(BaseGame):
         return "Mover: W/A/S/D  Pausa: P  Reiniciar: R"
 
     def render(self, renderer):
+        # Área de juego
         renderer.draw_playfield(self.offset_x, self.offset_y, self.grid_w, self.grid_h, self.cell,
                                 bg=(25,25,25), border=(180,180,180))
         renderer.draw_grid(self.offset_x, self.offset_y, self.grid_w, self.grid_h, self.cell, color=(50,50,50))
         for i,(x,y) in enumerate(self.snake):
-            color = (0,180,0) if i == 0 else (0,120,0)
-            renderer.draw_block(self.offset_x + x*self.cell, self.offset_y + y*self.cell,
-                                self.cell, self.cell, color)
-        fruit_color = {
-            'normal': color_from_name('blanco'),
-            'dorada': color_from_name('dorado'),
-            'explosiva': color_from_name('rojo'),
-            'ralentizar': color_from_name('azul_cielo'),
-            'morada': color_from_name('morado'),
-        }.get(self.fruit_type, color_from_name('blanco'))
-        renderer.draw_block(self.offset_x + self.fruit[0]*self.cell,
-                            self.offset_y + self.fruit[1]*self.cell,
-                            self.cell, self.cell, fruit_color)
-        renderer.draw_score(self.score)
-        renderer.draw_text("Nivel: {0}".format(self.level), 8, 32)
+            bx = self.offset_x + x*self.cell
+            by = self.offset_y + y*self.cell
+            if i == 0:
+                head_color = (120, 220, 120)
+                renderer.draw_block(bx, by, self.cell, self.cell, head_color)
+                # Ojos según dirección
+                eye_size = max(3, self.cell//6)
+                dx, dy = self.dir
+                if dx == 1:  # derecha
+                    ex = bx + self.cell - eye_size - 2
+                    ey1 = by + 3
+                    ey2 = by + self.cell - eye_size - 3
+                    renderer.draw_block(ex, ey1, eye_size, eye_size, (0,0,0))
+                    renderer.draw_block(ex, ey2, eye_size, eye_size, (0,0,0))
+                elif dx == -1:  # izquierda
+                    ex = bx + 2
+                    ey1 = by + 3
+                    ey2 = by + self.cell - eye_size - 3
+                    renderer.draw_block(ex, ey1, eye_size, eye_size, (0,0,0))
+                    renderer.draw_block(ex, ey2, eye_size, eye_size, (0,0,0))
+                elif dy == -1:  # arriba
+                    ey = by + 2
+                    ex1 = bx + 3
+                    ex2 = bx + self.cell - eye_size - 3
+                    renderer.draw_block(ex1, ey, eye_size, eye_size, (0,0,0))
+                    renderer.draw_block(ex2, ey, eye_size, eye_size, (0,0,0))
+                else:  # abajo
+                    ey = by + self.cell - eye_size - 2
+                    ex1 = bx + 3
+                    ex2 = bx + self.cell - eye_size - 3
+                    renderer.draw_block(ex1, ey, eye_size, eye_size, (0,0,0))
+                    renderer.draw_block(ex2, ey, eye_size, eye_size, (0,0,0))
+            else:
+                body_color = (0, 160, 0)
+                renderer.draw_block(bx, by, self.cell, self.cell, body_color)
+        # Diseños de frutas según reglas (.brik)
+        forma_dorada = get_rule_str(self.data, 'fruta_dorada', 'forma', 'manzana')
+        forma_explo = get_rule_str(self.data, 'fruta_explosiva', 'forma', 'bomba')
+        forma_ralen = get_rule_str(self.data, 'powerup_ralentizar', 'forma', 'reloj')
+        forma_morada = get_rule_str(self.data, 'fruta_morada', 'forma', 'tenis')
+        fx = self.offset_x + self.fruit[0]*self.cell
+        fy = self.offset_y + self.fruit[1]*self.cell
+        if self.fruit_type == 'dorada' and forma_dorada == 'manzana':
+            # Manzana dorada: cuerpo con leve borde y tallo/hoja
+            body_w = self.cell - 6; body_h = self.cell - 6
+            bx = fx + 3; by = fy + 3
+            renderer.draw_circle(bx, by, body_w, body_h, color_from_name('dorado'))
+            # Tallo
+            renderer.draw_block(fx + self.cell//2 - 2, fy + 1, 4, 6, (120,80,30))
+            # Hoja
+            renderer.draw_polygon([(fx + self.cell//2 + 3, fy + 2), (fx + self.cell//2 + 8, fy + 5), (fx + self.cell//2 + 2, fy + 7)], (40,160,60))
+        elif self.fruit_type == 'explosiva' and forma_explo == 'bomba':
+            # Bomba roja: cuerpo centrado y mecha en la parte superior derecha
+            body_w = self.cell - 8; body_h = self.cell - 8
+            bx = fx + 4; by = fy + 4
+            renderer.draw_circle(bx, by, body_w, body_h, color_from_name('rojo'))
+            # Mecha mejor ubicada con ángulo
+            mx = fx + self.cell - 8; my = fy + 4
+            renderer.draw_block(mx, my, 3, 8, (180,180,180))
+            renderer.draw_polygon([(mx+3, my), (mx+8, my-2), (mx+5, my+3)], (255,200,80))
+        elif self.fruit_type == 'ralentizar' and forma_ralen == 'reloj':
+            # Reloj azul: círculo con dos manecillas
+            renderer.draw_circle(fx+3, fy+3, self.cell-6, self.cell-6, color_from_name('azul_cielo'))
+            # Manecillas (polígonos simples)
+            renderer.draw_polygon([(fx+self.cell//2, fy+6), (fx+self.cell//2+2, fy+6), (fx+self.cell//2+2, fy+self.cell//2)], (0,0,0))
+            renderer.draw_polygon([(fx+self.cell//2, fy+self.cell//2), (fx+self.cell//2+2, fy+self.cell//2), (fx+self.cell//2+9, fy+self.cell//2+2)], (0,0,0))
+        elif self.fruit_type == 'morada' and forma_morada == 'tenis':
+            # Tenis deportivo morado: suela y cuerpo del zapato
+            c = color_from_name('morado')
+            # Suela
+            renderer.draw_block(fx + 2, fy + self.cell - 6, self.cell - 4, 4, (220,220,220))
+            # Cuerpo del tenis
+            pts = [
+                (fx + 2, fy + self.cell - 6),
+                (fx + self.cell - 4, fy + self.cell - 6),
+                (fx + self.cell - 6, fy + self.cell - 12),
+                (fx + self.cell - 10, fy + self.cell - 14),
+                (fx + 6, fy + self.cell - 14),
+                (fx + 4, fy + self.cell - 10)
+            ]
+            renderer.draw_polygon(pts, c)
+            # Detalle de cordones
+            renderer.draw_block(fx + 8, fy + self.cell - 12, 2, 4, (230,230,230))
+            renderer.draw_block(fx + 11, fy + self.cell - 12, 2, 4, (230,230,230))
+        else:
+            # Normal: fruta blanca con forma de manzana simple
+            body_w = self.cell - 6; body_h = self.cell - 6
+            bx = fx + 3; by = fy + 3
+            renderer.draw_circle(bx, by, body_w, body_h, color_from_name('blanco'))
+            renderer.draw_block(fx + self.cell//2 - 2, fy + 1, 4, 6, (120,120,120))
+        # Panel lateral derecho
+        panel_x = WINDOW_SIZE[0] - PANEL_WIDTH
+        renderer.draw_block(panel_x, 0, PANEL_WIDTH, WINDOW_SIZE[1], color=(20,20,20))
+        y = 20
+        renderer.draw_text("PUNTUACION", panel_x + 14, y, color=(0,200,0), size=12); y += 18
+        renderer.draw_text(str(self.score), panel_x + 14, y, size=12); y += 22
+        renderer.draw_text("VELOCIDAD", panel_x + 14, y, color=(180,180,180), size=12); y += 18
+        renderer.draw_text("{0}".format(round(self.speed,2)), panel_x + 14, y, size=12); y += 22
+        renderer.draw_text("NIVEL", panel_x + 14, y, color=(180,180,180), size=12); y += 18
+        renderer.draw_text(str(self.level), panel_x + 14, y, size=12); y += 22
+        renderer.draw_text("VIDAS", panel_x + 14, y, color=(180,180,180), size=12); y += 18
+        renderer.draw_text(str(self.lives), panel_x + 14, y, size=12); y += 26
+        # Espaciado entre bloques
+        y += 6
+        renderer.draw_text("CONTROLES", panel_x + 14, y, color=(200,200,200), size=12); y += 18
+        renderer.draw_text("P: Pausar", panel_x + 14, y, size=12); y += 16
+        renderer.draw_text("R: Reiniciar", panel_x + 14, y, size=12); y += 16
+        renderer.draw_text("W/A/S/D: Mover", panel_x + 14, y, size=12); y += 20
+        # Espaciado entre bloques
+        y += 8
+        renderer.draw_text("FRUTAS ESPECIALES", panel_x + 14, y, color=(200,200,200), size=12); y += 18
+        # Guía con forma y color
+        def guide_icon(icon_draw_fn, label):
+            px = panel_x + 14; py = y
+            # dibujar icono en 16x16
+            icon_draw_fn(px, py)
+            renderer.draw_text("  " + label, panel_x + 34, y-2)
+        def icon_manzana(px, py):
+            renderer.draw_circle(px+2, py+2, 12, 12, color_from_name('dorado'))
+            renderer.draw_block(px + 8, py + 0, 3, 5, (120,80,30))
+        def icon_bomba(px, py):
+            renderer.draw_circle(px+3, py+3, 10, 10, color_from_name('rojo'))
+            renderer.draw_block(px + 12, py + 2, 2, 6, (180,180,180))
+        def icon_reloj(px, py):
+            renderer.draw_circle(px+2, py+2, 12, 12, color_from_name('azul_cielo'))
+        def icon_tenis(px, py):
+            # Icono de tenis morado en miniatura
+            renderer.draw_block(px + 2, py + 12, 12, 3, (220,220,220))
+            renderer.draw_polygon([(px+3, py+12), (px+13, py+12), (px+11, py+8), (px+6, py+8), (px+4, py+10)], color_from_name('morado'))
+        guide_icon(icon_manzana, "Dorada"); y += 18
+        guide_icon(icon_bomba, "Explosiva"); y += 16
+        guide_icon(icon_reloj, "Ralentizar"); y += 16
+        guide_icon(icon_tenis, "Velocidad +"); y += 16
         if self.game_over:
-            renderer.draw_text_center("GAME OVER - Enter para volver", WINDOW_SIZE[1]//2 - 10)
+            renderer.draw_text_center("GAME OVER - Enter para reiniciar", WINDOW_SIZE[1]//2 - 10)
         if self.paused and not self.game_over:
             renderer.draw_text_center("PAUSA - P/R para continuar/reiniciar", WINDOW_SIZE[1]//2 + 30)
 
@@ -437,7 +622,8 @@ class TetrisGame(BaseGame):
         BaseGame.__init__(self, data)
         gw, gh = get_dimensions(data)
         self.grid_w, self.grid_h = gw, gh
-        self.cell = max(12, min(WINDOW_SIZE[0] // max(self.grid_w,1), WINDOW_SIZE[1] // max(self.grid_h,1)))
+        available_w = max(100, WINDOW_SIZE[0] - PANEL_WIDTH - 20)
+        self.cell = max(12, min(available_w // max(self.grid_w,1), WINDOW_SIZE[1] // max(self.grid_h,1)))
         self.neutral_color = (180,180,180)
         self.speed_base = get_numeric_fact(data, 'juego', 'velocidad_inicial', 1.0, float)
         self.speed = self.speed_base
@@ -467,7 +653,10 @@ class TetrisGame(BaseGame):
         self.inversion_active_end = 0.0
         self.time_total = 0.0
         self.current = self.spawn_piece()
-        self.offset_x = (WINDOW_SIZE[0] - self.grid_w * self.cell) // 2
+        # Preparar pieza siguiente para preview en panel
+        self.next_piece = self.spawn_piece()
+        play_w = WINDOW_SIZE[0] - PANEL_WIDTH
+        self.offset_x = max(10, (play_w - self.grid_w * self.cell) // 2)
         self.offset_y = (WINDOW_SIZE[1] - self.grid_h * self.cell) // 2
         self.level = 1
         self.points_per_level = get_rule_value(data, 'niveles_velocidad', 'puntos_por_nivel', 1000, int) or 1000
@@ -512,13 +701,31 @@ class TetrisGame(BaseGame):
             normales = [p for p in self.shapes if p[0] not in ('bomba', 'inversion', 'congelada')]
             if not normales:
                 normales = self.shapes
-            nombre, color, rots = random.choice(normales)
-            return {'name': nombre, 'color': color, 'rots': rots, 'rot': 0,
+            nombre, _color_ignored, rots = random.choice(normales)
+            # Piezas normales deben renderizarse en color neutro/gris
+            return {'name': nombre, 'color': self.neutral_color, 'rots': rots, 'rot': 0,
                     'x': self._spawn_center_x(rots), 'y': 0}
-        for n, color, rots in self.shapes:
-            if n == target:
-                return {'name': n, 'color': color, 'rots': rots, 'rot': 0,
-                        'x': self._spawn_center_x(rots), 'y': 0}
+        # Piezas especiales pueden adoptar cualquier forma de las normales
+        # Determinar color de especiales desde reglas para evitar fallback
+        color_especial = None
+        if target == 'bomba':
+            cn = get_rule_str(self.data, 'bomba_ladrillo', 'color', 'rojo_especial')
+            color_especial = color_from_name(cn)
+        elif target == 'inversion':
+            cn = get_rule_str(self.data, 'inversion_ladrillo', 'color', 'verde')
+            color_especial = color_from_name(cn)
+        elif target == 'congelada':
+            cn = get_rule_str(self.data, 'ficha_congelada', 'color', 'celeste')
+            color_especial = color_from_name(cn)
+        especiales = {n: (color, rots) for (n, color, rots) in self.shapes if n in ('bomba','inversion','congelada')}
+        if target in especiales:
+            color = color_especial or especiales[target][0]
+            normales = [p for p in self.shapes if p[0] not in ('bomba', 'inversion', 'congelada')]
+            if not normales:
+                normales = self.shapes
+            _, _, rots_norm = random.choice(normales)
+            return {'name': target, 'color': color, 'rots': rots_norm, 'rot': 0,
+                    'x': self._spawn_center_x(rots_norm), 'y': 0}
         return {'name': 'dummy', 'color': self.neutral_color, 'rots': [[[1]]],
                 'rot': 0, 'x': self._spawn_center_x([[[1]]]), 'y': 0}
 
@@ -574,8 +781,19 @@ class TetrisGame(BaseGame):
         if fin_cond == 'pieza_alcanza_tope':
             if any(cell is not None for cell in self.board[0]):
                 self.game_over = True
+        # Condición de victoria por nivel objetivo
+        vict_cond = next((r[2] for r in self.data.get('regla', []) if r[0]=='victoria' and r[1]=='condicion'), None)
+        vict_nivel = get_rule_value(self.data, 'victoria', 'nivel_objetivo', None, int)
+        if vict_cond == 'nivel_objetivo' and isinstance(vict_nivel, int):
+            if self.level >= vict_nivel:
+                self.game_over = True
         if not self.game_over:
-            self.current = self.spawn_piece()
+            # Avanzar a la siguiente pieza y generar nueva siguiente
+            self.current = self.next_piece
+            self.current['rot'] = 0
+            self.current['x'] = self._spawn_center_x(self.current['rots'])
+            self.current['y'] = 0
+            self.next_piece = self.spawn_piece()
             if self.collides(self.current['x'], self.current['y'], self.current['rot']):
                 self.game_over = True
 
@@ -638,6 +856,7 @@ class TetrisGame(BaseGame):
         self.time_total += dt
 
     def render(self, renderer):
+        # Área de juego
         renderer.draw_playfield(self.offset_x, self.offset_y, self.grid_w, self.grid_h, self.cell,
                                 bg=(25,25,25), border=(180,180,180))
         renderer.draw_grid(self.offset_x, self.offset_y, self.grid_w, self.grid_h, self.cell, color=(60,60,60))
@@ -656,10 +875,61 @@ class TetrisGame(BaseGame):
                     renderer.draw_block(self.offset_x + (self.current['x']+i)*self.cell,
                                         self.offset_y + (self.current['y']+j)*self.cell,
                                         self.cell, self.cell, col)
-        renderer.draw_score(self.score)
-        renderer.draw_text("Nivel: {0}".format(self.level), 8, 32)
+        # Panel lateral derecho
+        panel_x = WINDOW_SIZE[0] - PANEL_WIDTH
+        renderer.draw_block(panel_x, 0, PANEL_WIDTH, WINDOW_SIZE[1], color=(20,20,20))
+        y = 20
+        renderer.draw_text("PUNTUACION", panel_x + 14, y, color=(0,200,0), size=12); y += 18
+        renderer.draw_text(str(self.score), panel_x + 14, y, size=12); y += 20
+        renderer.draw_text("VELOCIDAD", panel_x + 14, y, color=(180,180,180), size=12); y += 18
+        # velocidad actual basada en efectos
+        current_speed = self.speed_base * (self.congelada_mult if (self.congelada_active_end and self.time_total < self.congelada_active_end) else 1.0)
+        renderer.draw_text("{0}".format(round(current_speed,2)), panel_x + 14, y, size=12); y += 22
+        renderer.draw_text("NIVEL", panel_x + 14, y, color=(180,180,180), size=12); y += 18
+        renderer.draw_text(str(self.level), panel_x + 14, y, size=12); y += 26
+        # Preview de pieza siguiente
+        renderer.draw_text("SIGUIENTE", panel_x + 14, y, color=(200,200,200), size=12); y += 16
+        if hasattr(self, 'next_piece') and self.next_piece:
+            # Dibujar en una mini rejilla 6x6 centrada en el panel
+            preview_cell = 14
+            preview_w = 6
+            preview_h = 6
+            pv_x = panel_x + (PANEL_WIDTH - preview_w*preview_cell)//2
+            pv_y = y
+            renderer.draw_grid(pv_x, pv_y, preview_w, preview_h, preview_cell, color=(60,60,60))
+            shape_prev = self.next_piece['rots'][0]
+            col_prev = self.next_piece.get('color') or self.neutral_color
+            # Calcular offset para centrar la forma dentro de la mini rejilla
+            sp_w = max(len(shape_prev[0]), 1)
+            sp_h = len(shape_prev)
+            off_x = (preview_w - sp_w)//2
+            off_y = (preview_h - sp_h)//2
+            for j,row in enumerate(shape_prev):
+                for i,val in enumerate(row):
+                    if val:
+                        renderer.draw_block(pv_x + (off_x+i)*preview_cell,
+                                            pv_y + (off_y+j)*preview_cell,
+                                            preview_cell, preview_cell, col_prev)
+            y = pv_y + preview_h*preview_cell + 10
+        # Espaciado entre bloques
+        y += 6
+        renderer.draw_text("CONTROLES", panel_x + 14, y, color=(200,200,200), size=12); y += 18
+        renderer.draw_text("P: Pausar", panel_x + 14, y, size=12); y += 16
+        renderer.draw_text("Esc: Salir", panel_x + 14, y, size=12); y += 16
+        renderer.draw_text("A/D: Mover", panel_x + 14, y, size=12); y += 16
+        renderer.draw_text("S: Caer", panel_x + 14, y, size=12); y += 16
+        renderer.draw_text("W: Mantener", panel_x + 14, y, size=12); y += 16
+        renderer.draw_text("E: Rotar", panel_x + 14, y, size=12); y += 20
+        # Espaciado entre bloques
+        y += 8
+        renderer.draw_text("PIEZAS ESPECIALES", panel_x + 14, y, color=(200,200,200), size=12); y += 18
+        def _guide_t(name, color):
+            renderer.draw_block(panel_x + 14, y, 12, 12, color); renderer.draw_text("  " + name, panel_x + 30, y-2, size=12)
+        _guide_t("Bomba", color_from_name('rojo_especial')); y += 16
+        _guide_t("Inversion", color_from_name('verde')); y += 16
+        _guide_t("Congelada", color_from_name('celeste')); y += 16
         if self.game_over:
-            renderer.draw_text_center("GAME OVER - Enter para volver", WINDOW_SIZE[1]//2)
+            renderer.draw_text_center("GAME OVER - Enter para reiniciar", WINDOW_SIZE[1]//2)
         if self.paused and not self.game_over:
             renderer.draw_text_center("PAUSA - P/R para continuar/reiniciar", WINDOW_SIZE[1]//2 + 30)
 
@@ -746,8 +1016,8 @@ class GameEngine:
                     self.mode = 'menu'
                     self.current_game = None
                 if cg and cg.game_over and self.input.was_pressed('return'):
-                    self.mode = 'menu'
-                    self.current_game = None
+                    # Reiniciar el juego con Enter en Game Over
+                    self.restart_current_game()
                 if self.current_game and not self.current_game.paused:
                     self.current_game.update(dt, self.input)
         self.renderer.clear()
