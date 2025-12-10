@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 # Autor: [Andres Rosero Toledo, Chris Ordoñez Alvarado, Edna Pamplona López]
 # Fecha: 2024-12-05
 # Descripción: Motor básico para juegos con Tkinter, incluyendo carga de archivos .brik
@@ -130,7 +131,7 @@ def _rgb(rgb_tuple):
     return '#%02x%02x%02x' % rgb_tuple
 
 def color_from_name(name):
-    # Normalizar nombre para que funcione en Py2 (unicode) y Py3
+    # Normalizar nombre para que funcione en Py2 (unicode)
     try:
         # En Py2: si es unicode, convertir a str (bytes) para coincidir con claves del dict
         import sys
